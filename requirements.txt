@@ -1,0 +1,27 @@
+# Core LLM & API
+langchain-groq
+langchain-core
+langgraph
+python-dotenv
+flet
+pydantic
+
+# Voice
+faster-whisper
+pyttsx3
+sounddevice
+openwakeword
+
+# Skills
+requests
+beautifulsoup4
+pyautogui
+Pillow
+schedule
+
+# Google APIs
+google-api-python-client
+google-auth-oauthlib
+
+# Utilities
+rich
