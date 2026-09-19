@@ -21,7 +21,7 @@ Plugin Execution → Response Generation → Text-to-Speech
 
 | Feature | Tech |
 |---|---|
-| LLM Reasoning | Groq API · LLaMA3-70B · LangChain |
+| LLM Reasoning | Groq API · Qwen / LLaMA · LangChain |
 | Speech-to-Text | faster-whisper (local, offline) |
 | Text-to-Speech | pyttsx3 |
 | Wake Word | openwakeword |
@@ -31,7 +31,7 @@ Plugin Execution → Response Generation → Text-to-Speech
 | Calendar | Google Calendar API (OAuth2) |
 | Memory | JSON-backed persistent store |
 | Reminders | JSON file |
-| System Control | os, webbrowser, pyautogui |
+| System Control | os, subprocess, webbrowser, pyautogui |
 
 ---
 
@@ -63,6 +63,7 @@ Edit `.env` and fill in your API keys:
 
 ```env
 GROQ_API_KEY=your_groq_api_key_here
+LLM_MODEL=qwen/qwen3.8-27b
 WAKE_WORD=Hey Nova
 EMAIL_ADDRESS=yourname@gmail.com
 EMAIL_APP_PASSWORD=your_google_app_password

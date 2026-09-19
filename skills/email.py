@@ -17,8 +17,9 @@ from utils.logger import logger
 #   EMAIL_ADDRESS=yourname@gmail.com
 #   EMAIL_APP_PASSWORD=your_google_app_password
 import os
-EMAIL_ADDRESS: str = os.getenv("EMAIL_ADDRESS", "")
-EMAIL_APP_PASSWORD: str = os.getenv("EMAIL_APP_PASSWORD", "")
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -61,6 +62,10 @@ class EmailSkill(BaseSkill):
         },
     }
 
+    def _get_credentials(self) -> tuple[str, str]:
+        """Fetch current email credentials from environment variables."""
+        return os.getenv("EMAIL_ADDRESS", "").strip(), os.getenv("EMAIL_APP_PASSWORD", "").strip()
+
     # ------------------------------------------------------------------
     # Entry point
     # ------------------------------------------------------------------
@@ -86,30 +91,32 @@ class EmailSkill(BaseSkill):
     # ------------------------------------------------------------------
 
     def _send_email(self, to: str, subject: str, body: str) -> str:
+        email_address, app_password = self._get_credentials()
         if not to or not subject or not body:
             return "Error: 'to', 'subject', and 'body' are all required for sending an email."
-        if not EMAIL_ADDRESS or not EMAIL_APP_PASSWORD:
+        if not email_address or not app_password:
             return (
                 "Error: EMAIL_ADDRESS or EMAIL_APP_PASSWORD not set in environment variables."
             )
 
         try:
             msg = MIMEMultipart()
-            msg["From"] = EMAIL_ADDRESS
+            msg["From"] = email_address
             msg["To"] = to
             msg["Subject"] = subject
             msg.attach(MIMEText(body, "plain"))
 
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=15) as server:
                 server.ehlo()
                 server.starttls()
-                server.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
-                server.sendmail(EMAIL_ADDRESS, to, msg.as_string())
+                server.ehlo()
+                server.login(email_address, app_password)
+                server.sendmail(email_address, to, msg.as_string())
 
-            logger.info(f"Email sent to: {to}")
-            return f"Email successfully sent to {to} with subject '{subject}'."
+            logger.info(f"Email successfully sent from {email_address} to {to}")
+            return f"Email successfully sent from {email_address} to {to} with subject '{subject}'."
         except smtplib.SMTPAuthenticationError:
-            return "Authentication failed. Please check your EMAIL_ADDRESS and EMAIL_APP_PASSWORD."
+            return "Authentication failed. Please check your EMAIL_ADDRESS and EMAIL_APP_PASSWORD in .env."
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
             return f"Failed to send email: {e}"
@@ -120,13 +127,15 @@ class EmailSkill(BaseSkill):
 
     def _connect_imap(self) -> imaplib.IMAP4_SSL:
         """Establish and return an authenticated IMAP SSL connection."""
+        email_address, app_password = self._get_credentials()
         mail = imaplib.IMAP4_SSL(IMAP_SERVER)
-        mail.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
+        mail.login(email_address, app_password)
         return mail
 
     def _fetch_messages(self, count: int) -> list:
         """Fetch the most recent `count` messages from INBOX, returning parsed email objects."""
-        if not EMAIL_ADDRESS or not EMAIL_APP_PASSWORD:
+        email_address, app_password = self._get_credentials()
+        if not email_address or not app_password:
             return []
 
         mail = self._connect_imap()

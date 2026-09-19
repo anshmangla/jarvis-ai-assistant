@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import webbrowser
 from datetime import datetime
@@ -20,7 +21,7 @@ class SystemControlSkill(BaseSkill):
         },
         "target": {
             "type": "string",
-            "description": "The target of the action (e.g., the URL to open, or the name of the application like 'notepad', 'calc'). Leave empty for screenshots.",
+            "description": "The target of the action (e.g., the URL to open, or the name of the application like 'chrome', 'firefox', 'notepad', 'calc'). Leave empty for screenshots.",
             "default": ""
         }
     }
@@ -42,28 +43,104 @@ class SystemControlSkill(BaseSkill):
         if not app_name:
             return "No application name provided."
         
+        target = app_name.strip()
+        target_lower = target.lower()
+
+        # Route website names or URLs to browser
+        if any(target_lower.startswith(p) for p in ("http://", "https://", "www.")) or any(
+            target_lower.endswith(tld) for tld in (".com", ".org", ".net", ".io", ".gov", ".edu")
+        ):
+            return self._open_browser(target)
+
+        # General browser request
+        if target_lower in ("browser", "web browser", "internet"):
+            return self._open_browser("https://www.google.com")
+
+        # Known Windows application paths and aliases
+        app_candidates = {
+            "chrome": [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+                "chrome.exe",
+            ],
+            "google chrome": [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+                "chrome.exe",
+            ],
+            "firefox": [
+                r"C:\Program Files\Mozilla Firefox\firefox.exe",
+                r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe",
+                "firefox.exe",
+            ],
+            "edge": [
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+                "msedge.exe",
+            ],
+            "microsoft edge": [
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+                "msedge.exe",
+            ],
+            "notepad": ["notepad.exe"],
+            "calc": ["calc.exe"],
+            "calculator": ["calc.exe"],
+            "code": ["code.cmd", "code.exe"],
+            "vscode": ["code.cmd", "code.exe"],
+            "vs code": ["code.cmd", "code.exe"],
+            "explorer": ["explorer.exe"],
+            "cmd": ["cmd.exe"],
+            "terminal": ["wt.exe", "cmd.exe"],
+            "spotify": [
+                os.path.expandvars(r"%APPDATA%\Spotify\Spotify.exe"),
+                "spotify.exe",
+            ],
+        }
+
         try:
-            # Note: On Windows, simple commands like 'calc' or 'notepad' work directly.
-            # More complex apps might need full paths or shell execution depending on the system PATH.
             if os.name == 'nt':
-                os.startfile(app_name)
+                candidates = app_candidates.get(target_lower, [target, f"{target}.exe"])
+                
+                # Try finding valid executable
+                exec_path = None
+                for cand in candidates:
+                    if os.path.isabs(cand) and os.path.exists(cand):
+                        exec_path = cand
+                        break
+                    which_path = shutil.which(cand)
+                    if which_path:
+                        exec_path = which_path
+                        break
+
+                if exec_path:
+                    subprocess.Popen([exec_path], shell=False)
+                    logger.info(f"Opened application: '{target}' using {exec_path}")
+                    return f"Successfully opened {target}."
+
+                # Fallback to os.startfile or shell start
+                os.startfile(target)
+                logger.info(f"Launched application via startfile: {target}")
+                return f"Successfully opened application: {target}"
             else:
-                # Basic fallback for linux/mac if needed, although user is on Windows.
-                subprocess.Popen([app_name], shell=True)
-            return f"Successfully opened application: {app_name}"
+                subprocess.Popen([target], shell=True)
+                return f"Successfully opened application: {target}"
         except Exception as e:
-            logger.error(f"Failed to open app '{app_name}': {e}")
-            return f"Failed to open '{app_name}'. Error: {e}"
+            logger.error(f"Failed to open app '{target}': {e}")
+            return f"Failed to open '{target}'. Error: {e}"
 
     def _open_browser(self, url: str) -> str:
         if not url:
-            return "No URL provided."
+            url = "https://www.google.com"
         
         if not url.startswith(('http://', 'https://')):
             url = f"https://{url}"
             
         try:
             webbrowser.open(url)
+            logger.info(f"Opened browser to: {url}")
             return f"Opened browser targeting: {url}"
         except Exception as e:
             logger.error(f"Failed to open browser for '{url}': {e}")
