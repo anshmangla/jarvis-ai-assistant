@@ -12,7 +12,7 @@ class Config:
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     
     # LLM Configuration
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "qwen/qwen3.8-27b")
     
     # Base Paths
     BASE_DIR: Path = Path(__file__).parent.resolve()
