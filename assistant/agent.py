@@ -79,28 +79,25 @@ class Agent:
 
         # -- 1. Fetch memory context -------------------------------------------
         memory_context = self.memory.get_facts_summary()
-        recent_history = self.memory.get_recent_history(turns=10)
+        recent_history = self.memory.get_recent_history(turns=6)
 
         sys_prompt = (
-            "You are J.A.R.V.I.S., a highly capable Personal AI Assistant. "
-            "Your personality is helpful, concise, smart, and efficient. Avoid overly verbose responses. "
-            "You use tools to accomplish tasks. If a task requires multiple tools, use them sequentially."
+            "You are J.A.R.V.I.S., a highly capable Personal AI Assistant.\n"
+            "Your personality is helpful, concise, smart, and efficient. Avoid overly verbose responses.\n"
+            "When the user asks you to perform an action (such as opening an application, opening a website or browser, sending an email, searching the web, or setting reminders), ALWAYS call the appropriate tool to execute it.\n"
+            "Never assume an application is already open or that an action is already completed based on conversation history; always invoke the tool."
         )
         
         if memory_context:
-            sys_prompt += f"\n\nHere are some known facts about the user:\n{memory_context}"
+            sys_prompt += f"\n\nKnown facts about the user:\n{memory_context}"
             
-        messages = [SystemMessage(content=sys_prompt)]
-        
-        # Hydrate proper LangChain context messages from the raw history list
-        recent_turns = self.memory._data.get("history", [])[-10:]
-        for turn in recent_turns:
-            if turn["role"] == "user":
-                messages.append(HumanMessage(content=turn["content"]))
-            elif turn["role"] == "assistant":
-                messages.append(AIMessage(content=turn["content"]))
+        if recent_history:
+            sys_prompt += f"\n\nRecent conversation history (for reference):\n{recent_history}"
 
-        messages.append(HumanMessage(content=user_input))
+        messages = [
+            SystemMessage(content=sys_prompt),
+            HumanMessage(content=user_input)
+        ]
 
         # -- 2. Run graph execution --------------------------------------------
         try:
